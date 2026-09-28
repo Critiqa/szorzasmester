@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Dungeon Master - Szorzótábla Gyakorló</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Retro Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        pixel: ['"Press Start 2P"', 'cursive'],
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        retroRed: '#ff2a6d',
+                        retroGreen: '#05ffa1',
+                        retroPurple: '#7b2cbf',
+                        retroGold: '#ffb703',
+                        retroBlue: '#00f5d4'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom pixel style enhancements */
+        .pixel-border {
+            box-shadow: 
+                0 -4px 0 0 #0f172a,
+                0 4px 0 0 #0f172a,
+                -4px 0 0 0 #0f172a,
+                4px 0 0 0 #0f172a,
+                0 0 0 4px #38bdf8;
+        }
+        .pixel-card {
+            box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.8);
+        }
+        .pixel-btn {
+            box-shadow: 0 4px 0 0 #1e293b;
+            transition: transform 0.05s, box-shadow 0.05s;
+        }
+        .pixel-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 0 #1e293b;
+        }
+        .shake {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+        .crit-text {
+            animation: floatUp 0.8s ease-out forwards;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            50% { transform: translateY(-25px) scale(1.3); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1); }
+        }
+        /* Disable touch zoom on buttons */
+        button {
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans select-none overflow-x-hidden bg-slate-950 text-slate-100">
+
+    <div id="app" class="max-w-md w-full mx-auto h-full flex flex-col justify-between p-3 sm:p-4 bg-slate-900 shadow-2xl relative border-x border-slate-800">
+        
+        <!-- Header / Logo Area -->
+        <header class="text-center py-2 border-b-2 border-slate-800 relative flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">⚔️</span>
+                <span class="font-pixel text-xs sm:text-sm text-retroGold tracking-wider">DUNGEON MATH</span>
+            </div>
+            <button id="soundToggleBtn" onclick="toggleSound()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs flex items-center gap-1 border border-slate-700">
+                <span id="soundIcon">🔊</span>
+            </button>
+        </header>
+
+        <!-- Dynamic Game Screens Container -->
+        <main class="flex-1 flex flex-col justify-center my-auto py-2">
+
+            <!-- 1. SETUP / MENU SCREEN -->
+            <section id="menuScreen" class="flex flex-col gap-4 py-2">
+                <div class="text-center my-2">
+                    <h1 class="font-pixel text-retroGreen text-base sm:text-lg mb-1 drop-shadow">PIXEL DUNGEON</h1>
+                    <p class="text-xs text-slate-400">Győzd le a szörnyeket a szorzás varázserejével!</p>
+                </div>
+
+                <!-- Table Selector -->
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="font-pixel text-xs text-retroGold">Gyakorolandó táblák:</label>
+                        <div class="flex gap-1">
+                            <button onclick="selectAllTables(true)" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded text-slate-300">Mind</button>
+                            <button onclick="selectHardTables()" class="text-[10px] bg-purple-900/60 hover:bg-purple-800 text-purple-300 px-2 py-0.5 rounded border border-purple-700">Nehéz (6-9,12)</button>
+                        </div>
+                    </div>
+                    <div id="tableGrid" class="grid grid-cols-4 gap-1.5 text-xs font-pixel">
+                        <!-- Dynamic Checkboxes generated via JS -->
+                    </div>
+                </div>
+
+                <!-- Game Mode Selector -->
+                <div class="space-y-2">
+                    <label class="font-pixel text-xs text-retroGold block mb-1">Válassz Játékmódot:</label>
+                    
+                    <button onclick="startGame('dungeon')" class="w-full bg-emerald-900/40 hover:bg-emerald-800/60 border-2 border-emerald-500 p-3 rounded-xl text-left flex items-center justify-between group transition">
+                        <div>
+                            <div class="font-pixel text-xs text-emerald-400 flex items-center gap-2">
+                                <span>⚔️</span> Kaland Mód (Dungeon)
+                            </div>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Győzz le 5 szörnyet és a Főellenséget!</p>
+                        </div>
+                        <span class="font-pixel text-xs text-emerald-400 group-hover:translate-x-1 transition">START ➔</span>
+                    </button>
+
+                    <button onclick="startGame('time')" class="w-full bg-amber-900/40 hover:bg-amber-800/60 border-2 border-amber-500 p-3 rounded-xl text-left flex items-center justify-between group transition">
+                        <div>
+                            <div class="font-pixel text-xs text-amber-400 flex items-center gap-2">
+                                <span>⏱️</span> Időfutam (60 mp)
+                            </div>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Hány helyes választ tudsz 1 perc alatt?</p>
+                        </div>
+                        <span class="font-pixel text-xs text-amber-400 group-hover:translate-x-1 transition">START ➔</span>
+                    </button>
+
+                    <button onclick="startGame('streak')" class="w-full bg-rose-900/40 hover:bg-rose-800/60 border-2 border-rose-500 p-3 rounded-xl text-left flex items-center justify-between group transition">
+                        <div>
+                            <div class="font-pixel text-xs text-rose-400 flex items-center gap-2">
+                                <span>🔥</span> Mester Sorozat (Streak)
+                            </div>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Meddig tudsz menni hiba nélkül?</p>
+                        </div>
+                        <span class="font-pixel text-xs text-rose-400 group-hover:translate-x-1 transition">START ➔</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2. IN-GAME SCREEN -->
+            <section id="gameScreen" class="hidden flex-1 flex-col justify-between relative">
+                
+                <!-- HUD / Status Bar -->
+                <div class="bg-slate-800/90 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center text-xs mb-2">
+                    <!-- Left: Health / Streak -->
+                    <div class="flex items-center gap-2">
+                        <div id="playerHpContainer" class="flex items-center gap-1">
+                            <span class="text-rose-500 text-sm">❤️</span>
+                            <div id="hpHearts" class="flex gap-0.5 text-xs"></div>
+                        </div>
+                        <div id="streakBadge" class="hidden font-pixel text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/40">
+                            🔥 <span id="streakCount">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Center: Mode Specific Timer / Monster Level -->
+                    <div id="gameStatusCenter" class="font-pixel text-xs text-center text-slate-300">
+                        <span id="statusLabel">LEVEL 1</span>
+                    </div>
+
+                    <!-- Right: Score / Time -->
+                    <div class="font-pixel text-right">
+                        <span id="scoreDisplay" class="text-retroGold text-xs">0 PTS</span>
+                    </div>
+                </div>
+
+                <!-- Battle Area / Monster View -->
+                <div id="battleArena" class="relative bg-slate-950/80 rounded-2xl p-3 border-2 border-slate-800 flex flex-col items-center justify-center min-h-[140px] overflow-hidden my-auto">
+                    
+                    <!-- Canvas for Spell Effects / Particles -->
+                    <canvas id="effectCanvas" class="absolute inset-0 pointer-events-none w-full h-full z-20"></canvas>
+                    
+                    <!-- Floating Critical Text Container -->
+                    <div id="critContainer" class="absolute inset-0 pointer-events-none z-30 flex items-center justify-center"></div>
+
+                    <!-- Monster Display -->
+                    <div class="flex flex-col items-center w-full relative z-10">
+                        <div id="monsterHpBarContainer" class="w-full max-w-[180px] bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700 mb-2">
+                            <div id="monsterHpBar" class="bg-emerald-500 h-full w-full transition-all duration-300"></div>
+                        </div>
+                        
+                        <div id="monsterSprite" class="text-5xl sm:text-6xl my-1 transform transition-transform duration-200">
+                            🧟
+                        </div>
+                        
+                        <div id="monsterName" class="font-pixel text-[10px] text-slate-400 mt-1 tracking-wider uppercase">
+                            Goblincs
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Math Problem Display -->
+                <div class="my-2 text-center bg-slate-800/90 rounded-xl p-3 border-2 border-slate-700">
+                    <div class="text-[10px] font-pixel text-slate-400 mb-1">Oldd meg a varázslathoz:</div>
+                    <div class="flex items-center justify-center gap-2 font-pixel text-2xl sm:text-3xl text-white">
+                        <span id="numA">7</span>
+                        <span class="text-retroRed">×</span>
+                        <span id="numB">8</span>
+                        <span class="text-retroBlue">=</span>
+                        <div class="min-w-[60px] h-[38px] bg-slate-950 border-2 border-retroBlue rounded flex items-center justify-center px-2 text-retroGreen text-2xl">
+                            <span id="userInput"></span><span class="animate-pulse text-retroBlue">_</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Virtual Numpad (Mobile Friendly) -->
+                <div class="grid grid-cols-3 gap-1.5 mt-auto">
+                    <button onclick="pressNum(1)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">1</button>
+                    <button onclick="pressNum(2)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">2</button>
+                    <button onclick="pressNum(3)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">3</button>
+                    
+                    <button onclick="pressNum(4)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">4</button>
+                    <button onclick="pressNum(5)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">5</button>
+                    <button onclick="pressNum(6)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">6</button>
+                    
+                    <button onclick="pressNum(7)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">7</button>
+                    <button onclick="pressNum(8)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">8</button>
+                    <button onclick="pressNum(9)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">9</button>
+                    
+                    <button onclick="pressClear()" class="pixel-btn bg-rose-950 hover:bg-rose-900 text-rose-300 font-pixel text-sm py-3 rounded-lg border border-rose-800">C</button>
+                    <button onclick="pressNum(0)" class="pixel-btn bg-slate-800 hover:bg-slate-700 active:bg-slate-600 font-pixel text-lg text-slate-100 py-3 rounded-lg border border-slate-700">0</button>
+                    <button onclick="submitAnswer()" class="pixel-btn bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 font-pixel text-xs text-white py-3 rounded-lg border border-emerald-400 flex items-center justify-center gap-1">
+                        TÁMADÁS ⚔️
+                    </button>
+                </div>
+            </section>
+
+            <!-- 3. GAME OVER / SUMMARY SCREEN -->
+            <section id="summaryScreen" class="hidden flex-1 flex-col justify-between py-2">
+                <div class="text-center my-2">
+                    <div id="summaryBadge" class="text-4xl mb-1">🏆</div>
+                    <h2 id="summaryTitle" class="font-pixel text-retroGold text-base sm:text-lg">KÜLDETÉS TELJESÍTVE!</h2>
+                    <p id="summarySubtitle" class="text-xs text-slate-400 mt-1">Legyőzted a Dungeon összes szörnyét!</p>
+                </div>
+
+                <!-- Stats Overview Grid -->
+                <div class="grid grid-cols-2 gap-2 my-2">
+                    <div class="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-center">
+                        <span class="text-[10px] font-pixel text-slate-400 block">Összpontszám</span>
+                        <span id="finalScore" class="font-pixel text-base text-retroGold">0</span>
+                    </div>
+                    <div class="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-center">
+                        <span class="text-[10px] font-pixel text-slate-400 block">Pontosság</span>
+                        <span id="finalAccuracy" class="font-pixel text-base text-retroGreen">100%</span>
+                    </div>
+                    <div class="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-center">
+                        <span class="text-[10px] font-pixel text-slate-400 block">Max Sorozat</span>
+                        <span id="finalStreak" class="font-pixel text-base text-amber-400">0</span>
+                    </div>
+                    <div class="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-center">
+                        <span class="text-[10px] font-pixel text-slate-400 block">Átl. Idő/válasz</span>
+                        <span id="finalAvgTime" class="font-pixel text-base text-retroBlue">1.8s</span>
+                    </div>
+                </div>
+
+                <!-- Weak Questions Feedback Box -->
+                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 my-1">
+                    <h3 class="font-pixel text-xs text-retroRed mb-1.5 flex items-center gap-1">
+                        <span>🔍</span> Gyakorolandó szorzások:
+                    </h3>
+                    <div id="weakList" class="text-xs space-y-1 text-slate-300 max-h-24 overflow-y-auto">
+                        <!-- Dynamic list of missed/slow questions -->
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex flex-col gap-2 mt-auto">
+                    <button id="retryWeakBtn" onclick="practiceWeakOnly()" class="hidden w-full bg-purple-800 hover:bg-purple-700 text-white font-pixel text-xs py-3 rounded-xl border border-purple-500 shadow">
+                        🎯 Csak a hibázott feladatok gyakorlása
+                    </button>
+                    <button onclick="showMenu()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-pixel text-xs py-3 rounded-xl border border-slate-500">
+                        🔄 Vissza a Főmenübe
+                    </button>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer Footer -->
+        <footer class="text-center py-1 border-t border-slate-800/60 text-[10px] text-slate-500">
+            6. Osztályos Matematika Gyakorló • Pixel Dungeon Edition
+        </footer>
+    </div>
+
+    <script>
+        /* Retro Audio Synthesizer using Web Audio API */
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'hit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'crit') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.setValueAtTime(600, now + 0.08);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.setValueAtTime(80, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'victory') {
+                const notes = [261.63, 329.63, 392.00, 523.25];
+                notes.forEach((freq, idx) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.type = 'triangle';
+                    o.frequency.value = freq;
+                    g.gain.setValueAtTime(0.2, now + idx * 0.1);
+                    g.gain.linearRampToValueAtTime(0.01, now + idx * 0.1 + 0.15);
+                    o.start(now + idx * 0.1);
+                    o.stop(now + idx * 0.1 + 0.15);
+                });
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundIcon').innerText = soundEnabled ? '🔊' : '🔇';
+        }
+
+        // Monsters Pool
+        const MONSTERS = [
+            { name: "Sötét Slime", sprite: "🟢", maxHp: 2 },
+            { name: "Koponya Harcos", sprite: "💀", maxHp: 3 },
+            { name: "Pók Mágus", sprite: "🕷️", maxHp: 3 },
+            { name: "Goblinc Vezér", sprite: "👺", maxHp: 4 },
+            { name: "Tűz Sárkány (BOSS)", sprite: "🐲", maxHp: 6 }
+        ];
+
+        // Game State Variables
+        let activeTables = [2,3,4,5,6,7,8,9,10];
+        let gameMode = 'dungeon'; // 'dungeon', 'time', 'streak'
+        let currentScore = 0;
+        let currentStreak = 0;
+        let maxStreak = 0;
+        let playerHp = 3;
+        let maxPlayerHp = 3;
+        let currentMonsterIndex = 0;
+        let monsterHp = 2;
+        let monsterMaxHp = 2;
+        
+        let numA = 0;
+        let numB = 0;
+        let currentAnswer = "";
+        let questionStartTime = 0;
+
+        let totalQuestionsAsked = 0;
+        let totalCorrectAnswers = 0;
+        let responseTimes = [];
+        let missedQuestions = []; // Array of {a, b, given, time}
+        
+        let timerInterval = null;
+        let timeRemaining = 60; // For time trial mode
+
+        // Setup Checkboxes for Tables 1 to 12
+        function initTableGrid() {
+            const grid = document.getElementById('tableGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                const isChecked = activeTables.includes(i) ? 'checked' : '';
+                grid.innerHTML += `
+                    <label class="flex items-center justify-center gap-1 bg-slate-900 border border-slate-700 p-1.5 rounded cursor-pointer hover:border-slate-500">
+                        <input type="checkbox" value="${i}" ${isChecked} onchange="updateSelectedTables()" class="accent-retroBlue">
+                        <span>${i}-es</span>
+                    </label>
+                `;
+            }
+        }
+
+        function updateSelectedTables() {
+            const checkboxes = document.querySelectorAll('#tableGrid input[type="checkbox"]');
+            activeTables = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => parseInt(cb.value));
+            
+            if (activeTables.length === 0) {
+                // Default back if empty
+                activeTables = [2, 3, 4, 5];
+            }
+        }
+
+        function selectAllTables(val) {
+            const checkboxes = document.querySelectorAll('#tableGrid input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = val);
+            updateSelectedTables();
+        }
+
+        function selectHardTables() {
+            const hard = [6, 7, 8, 9, 12];
+            const checkboxes = document.querySelectorAll('#tableGrid input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = hard.includes(parseInt(cb.value)));
+            updateSelectedTables();
+        }
+
+        function showMenu() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('menuScreen').classList.remove('hidden');
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('summaryScreen').classList.add('hidden');
+        }
+
+        function startGame(mode, customQuestions = null) {
+            initAudio();
+            gameMode = mode;
+            currentScore = 0;
+            currentStreak = 0;
+            maxStreak = 0;
+            playerHp = 3;
+            totalQuestionsAsked = 0;
+            totalCorrectAnswers = 0;
+            responseTimes = [];
+            missedQuestions = [];
+
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('summaryScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            // Setup Mode Specific UI
+            const streakBadge = document.getElementById('streakBadge');
+            const hpContainer = document.getElementById('playerHpContainer');
+            const statusCenter = document.getElementById('statusLabel');
+
+            if (gameMode === 'dungeon') {
+                currentMonsterIndex = 0;
+                hpContainer.classList.remove('hidden');
+                streakBadge.classList.add('hidden');
+                loadMonster(0);
+            } else if (gameMode === 'time') {
+                hpContainer.classList.add('hidden');
+                streakBadge.classList.remove('hidden');
+                timeRemaining = 60;
+                statusCenter.innerText = `⏱️ ${timeRemaining}s`;
+                timerInterval = setInterval(() => {
+                    timeRemaining--;
+                    statusCenter.innerText = `⏱️ ${timeRemaining}s`;
+                    if (timeRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        endGame();
+                    }
+                }, 1000);
+            } else if (gameMode === 'streak') {
+                hpContainer.classList.add('hidden');
+                streakBadge.classList.remove('hidden');
+                statusCenter.innerText = "🔥 TÚLÉLŐ";
+            }
+
+            updateHpDisplay();
+            updateScoreDisplay();
+            nextQuestion(customQuestions);
+        }
+
+        function loadMonster(index) {
+            const m = MONSTERS[Math.min(index, MONSTERS.length - 1)];
+            monsterHp = m.maxHp;
+            monsterMaxHp = m.maxHp;
+            document.getElementById('monsterSprite').innerText = m.sprite;
+            document.getElementById('monsterName').innerText = m.name;
+            document.getElementById('statusLabel').innerText = `SZÖRNY ${index + 1}/${MONSTERS.length}`;
+            updateMonsterHpBar();
+        }
+
+        function updateMonsterHpBar() {
+            const bar = document.getElementById('monsterHpBar');
+            const pct = Math.max(0, (monsterHp / monsterMaxHp) * 100);
+            bar.style.width = pct + "%";
+            if (pct < 30) {
+                bar.className = "bg-rose-500 h-full transition-all duration-300";
+            } else {
+                bar.className = "bg-emerald-500 h-full transition-all duration-300";
+            }
+        }
+
+        function updateHpDisplay() {
+            const container = document.getElementById('hpHearts');
+            container.innerHTML = '';
+            for (let i = 0; i < maxPlayerHp; i++) {
+                if (i < playerHp) {
+                    container.innerHTML += '<span>❤️</span>';
+                } else {
+                    container.innerHTML += '<span class="opacity-30">🖤</span>';
+                }
+            }
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('scoreDisplay').innerText = `${currentScore} PTS`;
+            document.getElementById('streakCount').innerText = currentStreak;
+        }
+
+        let customPool = null;
+
+        function nextQuestion(customList = null) {
+            if (customList) customPool = customList;
+
+            if (customPool && customPool.length > 0) {
+                const item = customPool.pop();
+                numA = item.a;
+                numB = item.b;
+            } else {
+                // Random selection from active tables
+                if (activeTables.length === 0) activeTables = [2,3,4,5];
+                numA = activeTables[Math.floor(Math.random() * activeTables.length)];
+                numB = Math.floor(Math.random() * 10) + 1; // 1 to 10
+            }
+
+            document.getElementById('numA').innerText = numA;
+            document.getElementById('numB').innerText = numB;
+            currentAnswer = "";
+            document.getElementById('userInput').innerText = "";
+            questionStartTime = Date.now();
+        }
+
+        function pressNum(val) {
+            if (currentAnswer.length < 3) {
+                currentAnswer += val.toString();
+                document.getElementById('userInput').innerText = currentAnswer;
+            }
+        }
+
+        function pressClear() {
+            currentAnswer = "";
+            document.getElementById('userInput').innerText = "";
+        }
+
+        function submitAnswer() {
+            if (currentAnswer === "") return;
+
+            const userVal = parseInt(currentAnswer);
+            const expected = numA * numB;
+            const elapsedSeconds = (Date.now() - questionStartTime) / 1000;
+            
+            totalQuestionsAsked++;
+            responseTimes.push(elapsedSeconds);
+
+            if (userVal === expected) {
+                // CORRECT ANSWER!
+                totalCorrectAnswers++;
+                currentStreak++;
+                if (currentStreak > maxStreak) maxStreak = currentStreak;
+
+                // Speed bonus check
+                const isCrit = elapsedSeconds < 2.5;
+                const basePts = 100;
+                const bonus = isCrit ? 50 : 0;
+                currentScore += (basePts + bonus) * Math.min(currentStreak, 5);
+
+                if (isCrit) {
+                    showCritEffect("⚡ KRITIKUS ÜTÉS!");
+                    playSound('crit');
+                    triggerCanvasSpell('lightning');
+                } else {
+                    playSound('hit');
+                    triggerCanvasSpell('fire');
+                }
+
+                // Monster damage animation
+                const sprite = document.getElementById('monsterSprite');
+                sprite.classList.add('shake');
+                setTimeout(() => sprite.classList.remove('shake'), 300);
+
+                if (gameMode === 'dungeon') {
+                    monsterHp--;
+                    updateMonsterHpBar();
+
+                    if (monsterHp <= 0) {
+                        // Monster Defeated!
+                        currentMonsterIndex++;
+                        if (currentMonsterIndex >= MONSTERS.length) {
+                            // Won Dungeon!
+                            playSound('victory');
+                            setTimeout(() => endGame(true), 500);
+                            return;
+                        } else {
+                            setTimeout(() => loadMonster(currentMonsterIndex), 400);
+                        }
+                    }
+                }
+
+                updateScoreDisplay();
+                nextQuestion();
+
+            } else {
+                // WRONG ANSWER!
+                playSound('error');
+                currentStreak = 0;
+                updateScoreDisplay();
+
+                missedQuestions.push({
+                    a: numA,
+                    b: numB,
+                    expected: expected,
+                    given: userVal,
+                    time: elapsedSeconds.toFixed(1)
+                });
+
+                // Arena Shake
+                const arena = document.getElementById('battleArena');
+                arena.classList.add('shake');
+                setTimeout(() => arena.classList.remove('shake'), 300);
+
+                if (gameMode === 'dungeon') {
+                    playerHp--;
+                    updateHpDisplay();
+                    if (playerHp <= 0) {
+                        setTimeout(() => endGame(false), 500);
+                        return;
+                    }
+                } else if (gameMode === 'streak') {
+                    // Game Over in streak mode
+                    setTimeout(() => endGame(false), 500);
+                    return;
+                }
+
+                nextQuestion();
+            }
+        }
+
+        // Support physical keyboard inputs
+        window.addEventListener('keydown', (e) => {
+            const gameScreen = document.getElementById('gameScreen');
+            if (gameScreen.classList.contains('hidden')) return;
+
+            if (e.key >= '0' && e.key <= '9') {
+                pressNum(parseInt(e.key));
+            } else if (e.key === 'Enter') {
+                submitAnswer();
+            } else if (e.key === 'Backspace' || e.key === 'c' || e.key === 'C') {
+                pressClear();
+            }
+        });
+
+        function showCritEffect(text) {
+            const container = document.getElementById('critContainer');
+            const el = document.createElement('div');
+            el.className = 'font-pixel text-retroGold text-xs sm:text-sm font-bold crit-text bg-black/60 px-2 py-1 rounded border border-retroGold';
+            el.innerText = text;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        function triggerCanvasSpell(type) {
+            const canvas = document.getElementById('effectCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            let particles = [];
+            const color = type === 'lightning' ? '#00f5d4' : '#ff2a6d';
+
+            for (let i = 0; i < 25; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 5 + 2,
+                    alpha: 1
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.04;
+                    if (p.alpha > 0) {
+                        alive = true;
+                        ctx.fillStyle = color;
+                        ctx.globalAlpha = p.alpha;
+                        ctx.fillRect(p.x, p.y, p.size, p.size);
+                    }
+                });
+                if (alive) {
+                    requestAnimationFrame(animate);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            animate();
+        }
+
+        function endGame(isVictory = false) {
+            if (timerInterval) clearInterval(timerInterval);
+
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('summaryScreen').classList.remove('hidden');
+            document.getElementById('summaryScreen').classList.add('flex');
+
+            const title = document.getElementById('summaryTitle');
+            const sub = document.getElementById('summarySubtitle');
+            const badge = document.getElementById('summaryBadge');
+
+            if (gameMode === 'dungeon') {
+                if (isVictory) {
+                    badge.innerText = '👑';
+                    title.innerText = 'GYŐZELEM!';
+                    title.className = 'font-pixel text-retroGreen text-base sm:text-lg';
+                    sub.innerText = 'Legyőzted az összes szörnyet!';
+                } else {
+                    badge.innerText = '🪦';
+                    title.innerText = 'VERESÉG...';
+                    title.className = 'font-pixel text-retroRed text-base sm:text-lg';
+                    sub.innerText = 'Elfogyott az életerőd a Dungeonben.';
+                }
+            } else {
+                badge.innerText = '🏆';
+                title.innerText = 'JÁTÉK VÉGE!';
+                title.className = 'font-pixel text-retroGold text-base sm:text-lg';
+                sub.innerText = 'Szép teljesítmény!';
+            }
+
+            // Stats Calculations
+            const accuracy = totalQuestionsAsked > 0 ? Math.round((totalCorrectAnswers / totalQuestionsAsked) * 100) : 0;
+            const avgTime = responseTimes.length > 0 ? (responseTimes.reduce((a,b)=>a+b, 0) / responseTimes.length).toFixed(1) : 0;
+
+            document.getElementById('finalScore').innerText = currentScore;
+            document.getElementById('finalAccuracy').innerText = `${accuracy}%`;
+            document.getElementById('finalStreak').innerText = maxStreak;
+            document.getElementById('finalAvgTime').innerText = `${avgTime}s`;
+
+            // Render Missed/Slow Questions List
+            const weakList = document.getElementById('weakList');
+            const retryBtn = document.getElementById('retryWeakBtn');
+            weakList.innerHTML = '';
+
+            if (missedQuestions.length > 0) {
+                retryBtn.classList.remove('hidden');
+                missedQuestions.forEach(item => {
+                    weakList.innerHTML += `
+                        <div class="flex justify-between items-center bg-slate-900 px-2 py-1 rounded border border-slate-700">
+                            <span>${item.a} × ${item.b} = <strong class="text-retroGreen">${item.expected}</strong></span>
+                            <span class="text-rose-400 text-[10px]">Hibás válasz: ${item.given}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                retryBtn.classList.add('hidden');
+                weakList.innerHTML = `<p class="text-emerald-400 text-center py-2">🌟 Fantasztikus! Egyetlen feladatot sem rontottál el!</p>`;
+            }
+        }
+
+        function practiceWeakOnly() {
+            if (missedQuestions.length === 0) return;
+            const pool = missedQuestions.map(q => ({ a: q.a, b: q.b }));
+            startGame('streak', pool);
+        }
+
+        // Initialize Checkboxes on Load
+        window.onload = function() {
+            initTableGrid();
+        };
+    </script>
+</body>
+</html>
